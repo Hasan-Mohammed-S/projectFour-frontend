@@ -8,6 +8,7 @@ import AddProduct from './pages/AddProduct';
 import ProductsList from './pages/ProductsList';
 import StoreDetails from './pages/StoreDetails';
 import ProductDetails from './pages/ProductDetails';
+
 import Navbar from './components/Navbar';
 
 
@@ -33,6 +34,7 @@ export default function App() {
           <Route path="/products" element={<ProductsList />} />
           <Route path="/stores/:storeId" element={<StoreDetails user={user} />} />
           <Route path="/products/:id" element={<ProductDetails user={user} />} />
+          
         </Routes>
       </div>
     </Router>

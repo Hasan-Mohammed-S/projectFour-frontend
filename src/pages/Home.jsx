@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import '../CSS/Home.css';
+import { Link } from 'react-router-dom';
 
 export default function Home() {
   const [stores, setStores] = useState([]);
@@ -25,36 +25,39 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="home-page">
-      
-      
-      <header className="hero-section">
+    <div>
+      <header>
         <h1>Welcome to Our Platform</h1>
         <p>Explore the best stores and diverse products easily without signing up in advance.</p>
-        <a href="#stores" className="cta-button">Browse Stores Now</a>
+        <a href="#stores">Browse Stores Now</a>
       </header>
 
-      <section id="stores" className="stores-section">
+      <section id="stores">
         <h2>Available Stores</h2>
 
-        {loading && <p style={{ textAlign: 'center' }}>Loading stores from database...</p>}
-        {error && <p style={{ textAlign: 'center', color: 'red' }}>Error: {error}</p>}
+        {loading && <p>Loading stores from database...</p>}
+        {error && <p>Error: {error}</p>}
 
         {!loading && !error && stores.length === 0 && (
-          <p style={{ textAlign: 'center' }}>No stores found in the database.</p>
+          <p>No stores found in the database.</p>
         )}
 
-        <div className="stores-grid">
-          {stores.map(store => (
-            <div key={store._id || store.id} className="store-card">
-              <img src={store.image || 'https://via.placeholder.com/300x150'} alt={store.name} />
-              <div className="store-info">
-                <h3>{store.name}</h3>
-                <p>{store.description}</p>
-                <button className="btn-visit">Visit Store</button>
+        <div>
+          {stores.map(store => {
+            const storeId = store._id || store.id;
+            return (
+              <div key={storeId}>
+                <img src={store.image || 'https://via.placeholder.com/300x150'} alt={store.name} />
+                <div>
+                  <h3>{store.name}</h3>
+                  <p>{store.description}</p>
+                  <Link to={`/stores/${storeId}`}>
+                    Visit Store
+                  </Link>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </section>
     </div>
