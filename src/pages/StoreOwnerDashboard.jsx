@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 
-const StoreOwnerDashboard = () => {
+const StoreOwnerDashboard = ({ user }) => {
   // 1. States for stores, selected store, products, and UI management
   const [stores, setStores] = useState([]);
   const [selectedStore, setSelectedStore] = useState(null);
@@ -9,15 +9,17 @@ const StoreOwnerDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // States for creating a new store form
+
+
   const [showCreateStoreForm, setShowCreateStoreForm] = useState(false);
   const [newStoreData, setNewStoreData] = useState({
     name: '',
     description: '',
     address: '',
+    owner: user?._id || '',
   });
 
-  // 2. Fetch all stores owned by the current seller
+
   useEffect(() => {
     fetchOwnerStores();
   }, []);
@@ -27,7 +29,7 @@ const StoreOwnerDashboard = () => {
       const token = localStorage.getItem('token');
       if (!token) throw new Error('Authentication required');
 
-      // Request all stores belonging to the seller
+
       const response = await fetch('http://localhost:3000/stores', {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -43,7 +45,7 @@ const StoreOwnerDashboard = () => {
       
       setStores(storesList);
 
-      // Default to selecting the first store
+
       if (storesList.length > 0) {
         setSelectedStore(storesList[0]);
         fetchStoreProducts(storesList[0]._id);
@@ -55,7 +57,7 @@ const StoreOwnerDashboard = () => {
     }
   };
 
-  // 3. Fetch products for a specific selected store
+
   const fetchStoreProducts = async (storeId) => {
     try {
       const token = localStorage.getItem('token');
@@ -77,13 +79,13 @@ const StoreOwnerDashboard = () => {
     }
   };
 
-  // 4. Handle store selection switch
+
   const handleSelectStore = (store) => {
     setSelectedStore(store);
     fetchStoreProducts(store._id);
   };
 
-  // 5. Handle creation of a new store
+
   const handleNewStoreChange = (e) => {
     const { name, value } = e.target;
     setNewStoreData((prev) => ({
@@ -111,8 +113,8 @@ const StoreOwnerDashboard = () => {
         throw new Error(data.error || 'Failed to create store');
       }
 
-      // Reset form and refresh stores
-      setNewStoreData({ name: '', description: '', address: '' });
+
+      setNewStoreData({ name: '', description: '', address: '' , owner: ''});
       setShowCreateStoreForm(false);
       fetchOwnerStores();
     } catch (err) {
@@ -120,7 +122,7 @@ const StoreOwnerDashboard = () => {
     }
   };
 
-  // 6. Handle product deletion
+
   const handleDeleteProduct = async (productId) => {
     if (!window.confirm('Are you sure you want to delete this product?')) return;
 
