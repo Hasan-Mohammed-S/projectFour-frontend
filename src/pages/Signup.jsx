@@ -1,34 +1,41 @@
 import React, { useState } from 'react';
-import Navbar from '../components/Navbar';
+import { useNavigate, Link } from 'react-router-dom';
 
-export default function Signup() {
+const SignUp = ({ setUser }) => {
+  const navigate = useNavigate();
+
+
   const [formData, setFormData] = useState({
-    name: '',
+    username: '',
     email: '',
+    phoneNumber: '',
     password: '',
-    phone: '',         
-    accountType: 'buyer'
+    role: 'buyer', 
   });
-  
+
+
+  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(false);
+
+
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+    const { name, value } = e.target;
+    setFormData((prevData) => ({
+      ...prevData,
+      [name]: value,
+    }));
   };
+
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
     setLoading(true);
-    setError(null);
-    setSuccess(false);
 
     try {
-      const response = await fetch('http://localhost:3000/api/users/signup', {
+      const response = await fetch('http://localhost:3000/auth/signup', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -39,91 +46,107 @@ export default function Signup() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'Failed to create an account');
+        throw new Error(data.error || 'Failed to sign up');
       }
 
-      setSuccess(true);
-      setLoading(false);
-      console.log('Account created successfully:', data);
+      if (data.token) {
+        localStorage.setItem('token', data.token);
+      }
 
+      if (setUser) {
+        setUser(data.user);
+      }
+
+
+      navigate('/');
     } catch (err) {
       setError(err.message);
+    } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="signup-page">
-      <Navbar />
-      <div className="auth-container">
-        <h2>Create a New Account</h2>
-        
-        {error && <p style={{ color: 'red' }}>Error: {error}</p>}
-        {success && <p style={{ color: 'green' }}>Account created successfully! You can now login.</p>}
+    <div>
+      <div>
+        <h2>Create an Account</h2>
+        <p>Enter your details to register</p>
+
+        {/* Display error message if present */}
+        {error && <div>{error}</div>}
 
         <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label>Full Name</label>
-            <input 
-              type="text" 
-              name="name"
-              value={formData.name} 
-              onChange={handleChange} 
-              required 
+          <div>
+            <label>Username</label>
+            <input
+              type="text"
+              name="username"
+              value={formData.username}
+              onChange={handleChange}
+              required
+              placeholder="e.g. Hasan"
             />
           </div>
 
-          <div className="form-group">
+          <div>
             <label>Email Address</label>
-            <input 
-              type="email" 
+            <input
+              type="email"
               name="email"
-              value={formData.email} 
-              onChange={handleChange} 
-              required 
+              value={formData.email}
+              onChange={handleChange}
+              required
+              placeholder="example@mail.com"
             />
           </div>
 
-          <div className="form-group">
+          <div>
             <label>Phone Number</label>
-            <input 
-              type="tel" 
-              name="phone"
-              value={formData.phone} 
-              onChange={handleChange} 
-              placeholder="e.g., +973XXXXXXXX"
+            <input
+              type="tel"
+              name="phoneNumber"
+              value={formData.phoneNumber}
+              onChange={handleChange}
+              required
+              placeholder="Enter phone number"
             />
           </div>
 
-          <div className="form-group">
+          <div>
+            <label>Password</label>
+            <input
+              type="password"
+              name="password"
+              value={formData.password}
+              onChange={handleChange}
+              required
+              placeholder="••••••••"
+            />
+          </div>
+
+          <div>
             <label>Account Type</label>
-            <select 
-              name="accountType" 
-              value={formData.accountType} 
+            <select
+              name="role"
+              value={formData.role}
               onChange={handleChange}
             >
-              <option value="buyer">Customer / Buyer</option>
-              <option value="store_owner">Store Owner</option>
+              <option value="buyer">Buyer</option>
+              <option value="seller">Seller / Store Owner</option>
             </select>
           </div>
 
-          <div className="form-group">
-            <label>Password</label>
-            <input 
-              type="password" 
-              name="password"
-              value={formData.password} 
-              onChange={handleChange} 
-              required 
-            />
-          </div>
-
-          <button type="submit" className="btn-submit" disabled={loading}>
-            {loading ? 'Creating Account...' : 'Sign Up'}
+          <button type="submit" disabled={loading}>
+            {loading ? 'Registering...' : 'Sign Up'}
           </button>
         </form>
-        <p>Already have an account? <a href="/login">Login</a></p>
+
+        <div>
+          Already have an account? <Link to="/login">Login</Link>
+        </div>
       </div>
     </div>
   );
-}
+};
+
+export default SignUp;
