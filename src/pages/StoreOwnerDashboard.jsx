@@ -28,7 +28,7 @@ const StoreOwnerDashboard = () => {
       if (!token) throw new Error('Authentication required');
 
       // Request all stores belonging to the seller
-      const response = await fetch('http://localhost:3000/stores/mine', {
+      const response = await fetch('http://localhost:3000/stores', {
         headers: {
           Authorization: `Bearer ${token}`,
         },

@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import Navbar from '../components/Navbar';
 
 export default function Login({ setUser }) {
   const [identifier, setIdentifier] = useState('');
@@ -51,7 +50,6 @@ export default function Login({ setUser }) {
 
   return (
     <div className="login-page">
-      <Navbar />
       <div className="auth-container">
         <h2>Login to Your Account</h2>
 

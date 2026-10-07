@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import Navbar from '../components/Navbar';
 import '../CSS/Home.css';
 
 export default function Home() {
@@ -27,7 +26,7 @@ export default function Home() {
 
   return (
     <div className="home-page">
-      <Navbar />
+      
       
       <header className="hero-section">
         <h1>Welcome to Our Platform</h1>
