@@ -1,152 +1,129 @@
-import React, { useState } from 'react';
+import { useState, useContext } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { signUp } from '../services/authService';
+import { UserContext } from '../contexts/UserContext';
+import Feedback from '../components/Feedback';
 
-const SignUp = ({ setUser }) => {
-  const navigate = useNavigate();
-
-
-  const [formData, setFormData] = useState({
+export default function Signup({ setUser }) {
+  const [values, setValues] = useState({
     username: '',
     email: '',
     phoneNumber: '',
     password: '',
-    role: 'buyer', 
+    role: 'buyer'
   });
-
-
+  
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  
+  const { setSessionError } = useContext(UserContext);
+  const navigate = useNavigate();
 
-
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prevData) => ({
-      ...prevData,
-      [name]: value,
-    }));
-  };
-
-
-
-  const handleSubmit = async (e) => {
+  async function submit(e) {
     e.preventDefault();
+    
+    if (busy) {
+      return;
+    }
+    
+    setBusy(true);
     setError('');
-    setLoading(true);
-
+    
     try {
-      const response = await fetch('http://localhost:3000/auth/signup', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to sign up');
-      }
-
-      if (data.token) {
-        localStorage.setItem('token', data.token);
-      }
-
-      if (setUser) {
-        setUser(data.user);
-      }
-
-
-      navigate('/');
+      const user = await signUp(values);
+      setSessionError('');
+      setUser(user);
+      navigate(user.role === 'seller' ? '/owner-dashboard' : '/');
     } catch (err) {
       setError(err.message);
     } finally {
-      setLoading(false);
+      setBusy(false);
     }
+  }
+
+  const change = (e) => {
+    setValues({
+      ...values,
+      [e.target.name]: e.target.value
+    });
   };
 
   return (
-    <div>
-      <div>
-        <h2>Create an Account</h2>
-        <p>Enter your details to register</p>
-
-        {/* Display error message if present */}
-        {error && <div>{error}</div>}
-
-        <form onSubmit={handleSubmit}>
-          <div>
-            <label>Username</label>
+    <div className="auth-container panel">
+      <span className="eyebrow">Find your handmade favorites</span>
+      <h1>Create an account</h1>
+      
+      <Feedback error={error} />
+      
+      <form onSubmit={submit}>
+        <fieldset disabled={busy}>
+          <label>
+            Username
             <input
-              type="text"
               name="username"
-              value={formData.username}
-              onChange={handleChange}
+              value={values.username}
+              onChange={change}
+              minLength={2}
+              maxLength={50}
+              autoComplete="username"
               required
-              placeholder="e.g. Hasan"
             />
-          </div>
-
-          <div>
-            <label>Email Address</label>
+          </label>
+          
+          <label>
+            Email address
             <input
               type="email"
               name="email"
-              value={formData.email}
-              onChange={handleChange}
+              value={values.email}
+              onChange={change}
+              autoComplete="email"
               required
-              placeholder="example@mail.com"
             />
-          </div>
-
-          <div>
-            <label>Phone Number</label>
+          </label>
+          
+          <label>
+            Phone number
             <input
               type="tel"
               name="phoneNumber"
-              value={formData.phoneNumber}
-              onChange={handleChange}
+              value={values.phoneNumber}
+              onChange={change}
+              maxLength={20}
+              autoComplete="tel"
               required
-              placeholder="Enter phone number"
             />
-          </div>
-
-          <div>
-            <label>Password</label>
+          </label>
+          
+          <label>
+            Password
             <input
               type="password"
               name="password"
-              value={formData.password}
-              onChange={handleChange}
+              value={values.password}
+              onChange={change}
+              minLength={8}
+              autoComplete="new-password"
               required
-              placeholder="••••••••"
             />
-          </div>
-
-          <div>
-            <label>Account Type</label>
-            <select
-              name="role"
-              value={formData.role}
-              onChange={handleChange}
-            >
+          </label>
+          <p className="hint">At least 8 characters. Maximum 72 bytes.</p>
+          
+          <label>
+            Account type
+            <select name="role" value={values.role} onChange={change}>
               <option value="buyer">Buyer</option>
               <option value="seller">Seller / Store Owner</option>
             </select>
-          </div>
-
-          <button type="submit" disabled={loading}>
-            {loading ? 'Registering...' : 'Sign Up'}
-          </button>
-        </form>
-
-        <div>
-          Already have an account? <Link to="/login">Login</Link>
-        </div>
-      </div>
+          </label>
+          
+          <button>{busy ? 'Creating account…' : 'Sign up'}</button>
+        </fieldset>
+      </form>
+      
+      <p>
+        Already have an account? <Link to="/login">Log in</Link>
+      </p>
     </div>
   );
-};
-
-export default SignUp;
+}

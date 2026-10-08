@@ -1,65 +1,87 @@
-import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useResource } from '../services/useResource';
+import { ProductCard, StoreCard } from '../components/CatalogCards';
+import Feedback from '../components/Feedback';
 
 export default function Home() {
-  const [stores, setStores] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    fetch('http://localhost:3000/stores')
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error('Failed to fetch stores from the database');
-        }
-        return response.json();
-      })
-      .then((data) => {
-        setStores(data);
-        setLoading(false);
-      })
-      .catch((err) => {
-        setError(err.message);
-        setLoading(false);
-      });
-  }, []);
+  const stores = useResource('/stores');
+  const products = useResource('/products');
 
   return (
-    <div>
-      <header>
-        <h1>Welcome to Our Platform</h1>
-        <p>Explore the best stores and diverse products easily without signing up in advance.</p>
-        <a href="#stores">Browse Stores Now</a>
+    <>
+      <header className="hero">
+        <div>
+          <span className="eyebrow">Small shops. Something special.</span>
+          <h1>
+            Discover a little<br />more handmade.
+          </h1>
+          <p>
+            Thoughtful gifts, beautiful details, and one-of-a-kind pieces from independent makers.
+          </p>
+          <div className="actions">
+            <Link className="button" to="/products">
+              Explore products →
+            </Link>
+            <Link className="button secondary" to="/stores/list">
+              Meet the stores
+            </Link>
+          </div>
+        </div>
+        <div className="hero-art" aria-hidden="true">
+          <span>✦</span>
+          <p>
+            Made by hand.<br />Chosen with care.
+          </p>
+        </div>
       </header>
 
       <section id="stores">
-        <h2>Available Stores</h2>
-
-        {loading && <p>Loading stores from database...</p>}
-        {error && <p>Error: {error}</p>}
-
-        {!loading && !error && stores.length === 0 && (
-          <p>No stores found in the database.</p>
-        )}
-
-        <div>
-          {stores.map(store => {
-            const storeId = store._id || store.id;
-            return (
-              <div key={storeId}>
-                <img src={store.image || 'https://via.placeholder.com/300x150'} alt={store.name} />
-                <div>
-                  <h3>{store.name}</h3>
-                  <p>{store.description}</p>
-                  <Link to={`/stores/${storeId}`}>
-                    Visit Store
-                  </Link>
-                </div>
-              </div>
-            );
-          })}
+        <div className="section-heading">
+          <div>
+            <span className="eyebrow">Meet the makers</span>
+            <h2>Stores</h2>
+          </div>
+          <Link to="/stores/list">View all stores →</Link>
         </div>
+        
+        <Feedback loading={stores.loading} error={stores.error} />
+        
+        <div className="card-grid">
+          {stores.data?.slice(0, 4).map((store) => (
+            <StoreCard key={store._id} store={store} />
+          ))}
+        </div>
+        
+        {stores.data?.length === 0 && (
+          <div className="empty">
+            Our makers are setting up their stores. Check back soon.
+          </div>
+        )}
       </section>
-    </div>
+
+      <section>
+        <div className="section-heading">
+          <div>
+            <span className="eyebrow">Find your next favorite</span>
+            <h2>Products</h2>
+          </div>
+          <Link to="/products">View all products →</Link>
+        </div>
+        
+        <Feedback loading={products.loading} error={products.error} />
+        
+        <div className="card-grid">
+          {products.data?.slice(0, 8).map((product) => (
+            <ProductCard key={product._id} product={product} />
+          ))}
+        </div>
+        
+        {products.data?.length === 0 && (
+          <div className="empty">
+            New handmade pieces are on their way.
+          </div>
+        )}
+      </section>
+    </>
   );
 }

@@ -1,280 +1,183 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useResource } from '../services/useResource';
+import { api, idOf, money } from '../services/api';
+import Feedback from '../components/Feedback';
+import StoreForm from '../components/StoreForm';
+import Image from '../components/Image';
 
-const StoreOwnerDashboard = ({ user }) => {
-  // 1. States for stores, selected store, products, and UI management
-  const [stores, setStores] = useState([]);
-  const [selectedStore, setSelectedStore] = useState(null);
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
+export default function StoreOwnerDashboard() {
+  const stores = useResource('/stores/mine');
+  const products = useResource('/products/mine');
+
+  const [selection, setSelection] = useState('');
+  const [creating, setCreating] = useState(false);
+  const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
 
+  const selected = stores.data?.find((s) => s._id === selection) || stores.data?.[0];
+  const list = (products.data || []).filter((p) => idOf(p.store) === selected?._id);
 
+  async function remove(product) {
+    if (!window.confirm(`Remove ${product.name} from your catalog?`)) {
+      return;
+    }
 
-  const [showCreateStoreForm, setShowCreateStoreForm] = useState(false);
-  const [newStoreData, setNewStoreData] = useState({
-    name: '',
-    description: '',
-    address: '',
-    owner: user?._id || '',
-  });
+    setBusy(product._id);
+    setError('');
 
-
-  useEffect(() => {
-    fetchOwnerStores();
-  }, []);
-
-  const fetchOwnerStores = async () => {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) throw new Error('Authentication required');
-
-
-      const response = await fetch('http://localhost:3000/stores', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch stores');
-      }
-
-      const storesData = await response.json();
-      const storesList = Array.isArray(storesData) ? storesData : storesData ? [storesData] : [];
-      
-      setStores(storesList);
-
-
-      if (storesList.length > 0) {
-        setSelectedStore(storesList[0]);
-        fetchStoreProducts(storesList[0]._id);
-      }
-    } catch (err) {
-      setError(err.message);
+      await api(`/products/${product._id}`, { method: 'DELETE' });
+      products.refresh();
+      setMessage('Product removed. Existing orders are preserved.');
+    } catch (e) {
+      setError(e.message);
     } finally {
-      setLoading(false);
+      setBusy('');
     }
-  };
-
-
-  const fetchStoreProducts = async (storeId) => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:3000/products', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        const allProducts = await response.json();
-        const storeProducts = allProducts.filter(
-          (prod) => prod.store?._id === storeId || prod.store === storeId
-        );
-        setProducts(storeProducts);
-      }
-    } catch (err) {
-      console.error('Failed to fetch products:', err);
-    }
-  };
-
-
-  const handleSelectStore = (store) => {
-    setSelectedStore(store);
-    fetchStoreProducts(store._id);
-  };
-
-
-  const handleNewStoreChange = (e) => {
-    const { name, value } = e.target;
-    setNewStoreData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
-
-  const handleCreateStoreSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:3000/stores', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(newStoreData),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to create store');
-      }
-
-
-      setNewStoreData({ name: '', description: '', address: '' , owner: ''});
-      setShowCreateStoreForm(false);
-      fetchOwnerStores();
-    } catch (err) {
-      alert(err.message);
-    }
-  };
-
-
-  const handleDeleteProduct = async (productId) => {
-    if (!window.confirm('Are you sure you want to delete this product?')) return;
-
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:3000/products/${productId}`, {
-        method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) throw new Error('Failed to delete product');
-
-      setProducts((prev) => prev.filter((p) => p._id !== productId));
-    } catch (err) {
-      alert(err.message);
-    }
-  };
-
-  if (loading) return <div>Loading dashboard...</div>;
-  if (error) return <div>Error: {error}</div>;
+  }
 
   return (
-    <div>
-      <h1>Store Owner Dashboard</h1>
+    <>
+      <div className="section-heading page-heading">
+        <div>
+          <span className="eyebrow">Your maker space</span>
+          <h1>Store dashboard</h1>
+          <p>Manage your stores, products, and incoming orders.</p>
+        </div>
 
-      {/* Button to toggle New Store Form */}
-      <div>
-        <button onClick={() => setShowCreateStoreForm(!showCreateStoreForm)}>
-          {showCreateStoreForm ? 'Cancel' : '+ Create Another Store'}
-        </button>
+        <div className="actions">
+          <Link className="button secondary" to="/seller/orders">
+            View orders
+          </Link>
+          <button onClick={() => setCreating(!creating)}>
+            {creating ? 'Close form' : '+ Create store'}
+          </button>
+        </div>
       </div>
 
-      {/* New Store Creation Form */}
-      {showCreateStoreForm && (
-        <div>
-          <h3>Create a New Store</h3>
-          <form onSubmit={handleCreateStoreSubmit}>
-            <div>
-              <label>Store Name</label>
-              <input
-                type="text"
-                name="name"
-                value={newStoreData.name}
-                onChange={handleNewStoreChange}
-                required
-              />
-            </div>
-            <div>
-              <label>Description</label>
+      <Feedback
+        loading={stores.loading || products.loading}
+        error={error || stores.error || products.error}
+        message={message}
+      />
 
-              <textarea
-                name="description"
-                value={newStoreData.description}
-                onChange={handleNewStoreChange}
-                required
-              />
-            </div>
-            <div>
-              <label>Address</label>
-              <input
-                type="text"
-                name="address"
-                value={newStoreData.address}
-                onChange={handleNewStoreChange}
-                required
-              />
-            </div>
-            <button type="submit">Save Store</button>
-          </form>
-          <hr />
+      {creating && (
+        <StoreForm
+          onCancel={() => setCreating(false)}
+          onSaved={(store) => {
+            setCreating(false);
+            setSelection(store._id);
+            stores.refresh();
+            setMessage('Store created successfully.');
+          }}
+        />
+      )}
+
+      {stores.data?.length === 0 && (
+        <div className="empty">
+          <h2>Your store starts here</h2>
+          <p>Create a store to add products and receive orders.</p>
+          <button onClick={() => setCreating(true)}>
+            Create your first store
+          </button>
         </div>
       )}
 
-      {/* Stores Switcher Header */}
-      <div>
-        <h2>My Stores List ({stores.length})</h2>
-        {stores.length === 0 ? (
-          <p>No stores created yet.</p>
-        ) : (
-          <div>
-            {stores.map((st) => (
-              <button
-                key={st._id}
-                onClick={() => handleSelectStore(st)}
-                disabled={selectedStore?._id === st._id}
+      {selected && (
+        <>
+          <div className="toolbar">
+            <label>
+              My stores
+              <select
+                value={selected._id}
+                onChange={(e) => setSelection(e.target.value)}
               >
-                {st.name} {selectedStore?._id === st._id ? '(Active)' : ''}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <hr />
-
-      {/* Details of Selected Store */}
-      {selectedStore && (
-        <div>
-          <div>
-            <h2>Active Store: {selectedStore.name}</h2>
-            <p><strong>Description:</strong> {selectedStore.description}</p>
-            <p><strong>Address:</strong> {selectedStore.address}</p>
-            <p><strong>Status:</strong> {selectedStore.isActive ? 'Active' : 'Inactive'}</p>
-            <Link to={`/stores/edit/${selectedStore._id}`}>Edit Store Details</Link>
+                {stores.data.map((s) => (
+                  <option key={s._id} value={s._id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
 
-          <hr />
+          <div className="panel section-heading">
+            <div>
+              <h2>{selected.name}</h2>
+              <p>{selected.description}</p>
+              <p>{selected.address}</p>
+            </div>
 
-          {/* Products Management for Selected Store */}
-          <div>
-            <h3>Products for {selectedStore.name}</h3>
-            <Link to={`/products/new?storeId=${selectedStore._id}`}>Add Product to {selectedStore.name}</Link>
+            <div className="actions">
+              <Link className="button secondary" to={`/stores/edit/${selected._id}`}>
+                Edit store
+              </Link>
+              <Link className="button" to={`/products/new?storeId=${selected._id}`}>
+                + Add product
+              </Link>
+            </div>
+          </div>
 
-            {products.length === 0 ? (
-              <p>No products available for this store.</p>
+          <section>
+            <h2>Products · {list.length}</h2>
+
+            {!list.length ? (
+              <div className="empty">Add your first product to this store.</div>
             ) : (
-              <table>
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Category</th>
-                    <th>Price</th>
-                    <th>Stock</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {products.map((product) => (
-                    <tr key={product._id}>
-                      <td>{product.name}</td>
-                      <td>{product.category}</td>
-                      <td>${product.price}</td>
-                      <td>{product.stock}</td>
-                      <td>
-                        <Link to={`/products/edit/${product._id}`}>Edit</Link>
-                        {' | '}
-                        <button onClick={() => handleDeleteProduct(product._id)}>
-                          Delete
-                        </button>
-                      </td>
+              <div className="table-wrap panel">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Product</th>
+                      <th>Category</th>
+                      <th>Price</th>
+                      <th>Stock</th>
+                      <th>Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {list.map((p) => (
+                      <tr key={p._id}>
+                        <td>
+                          <div className="order-item">
+                            <Image
+                              className="thumbnail"
+                              src={p.image}
+                              alt={p.name}
+                            />
+                            <Link to={`/products/${p._id}`}>{p.name}</Link>
+                          </div>
+                        </td>
+                        <td>{p.category}</td>
+                        <td>{money(p.price)}</td>
+                        <td>
+                          <span className={`badge ${p.stock ? '' : 'muted'}`}>
+                            {p.stock || 'Out of stock'}
+                          </span>
+                        </td>
+                        <td>
+                          <div className="actions">
+                            <Link to={`/products/edit/${p._id}`}>Edit</Link>
+                            <button
+                              className="secondary danger small"
+                              disabled={Boolean(busy)}
+                              onClick={() => remove(p)}
+                            >
+                              {busy === p._id ? 'Removing…' : 'Remove'}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
-          </div>
-        </div>
+          </section>
+        </>
       )}
-    </div>
+    </>
   );
-};
-
-export default StoreOwnerDashboard;
+}

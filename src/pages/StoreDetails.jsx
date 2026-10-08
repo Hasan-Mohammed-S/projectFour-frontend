@@ -1,85 +1,86 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, useParams, useLocation, useNavigate } from 'react-router-dom';
+import { useResource } from '../services/useResource';
+import { idOf } from '../services/api';
+import Feedback from '../components/Feedback';
+import Image from '../components/Image';
+import StoreForm from '../components/StoreForm';
+import { ProductCard } from '../components/CatalogCards';
 
-const StoreDetails = ({ user }) => {
+export default function StoreDetails({ user }) {
   const { storeId } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
-
-  const [store, setStore] = useState(null);
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    const fetchStoreAndProducts = async () => {
-      try {
-
-        const storeRes = await fetch(`http://localhost:3000/stores/${storeId}`);
-        if (!storeRes.ok) throw new Error('Store not found');
-        const storeData = await storeRes.json();
-        setStore(storeData);
-
-
-        const prodRes = await fetch(`http://localhost:3000/products/store/${storeId}`);
-        if (prodRes.ok) {
-          const prodData = await prodRes.json();
-          setProducts(prodData);
-        }
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchStoreAndProducts();
-  }, [storeId]);
-
-  if (loading) return <div>Loading store...</div>;
-  if (error) return <div>Error: {error}</div>;
-
-
-  const isOwner = user && (user._id === store?.owner || user._id === store?.owner?._id);
+  
+  const store = useResource(`/stores/${storeId}`);
+  const products = useResource(`/products?store=${storeId}`);
+  
+  const [edit, setEdit] = useState(location.pathname.includes('/edit/'));
+  const [message, setMessage] = useState('');
+  
+  const owned = user?._id === idOf(store.data?.owner);
+  
+  if (!store.data) {
+    return <Feedback error={store.error} loading={store.loading} />;
+  }
 
   return (
-    <div>
-      <div>
-        <h1>{store?.name}</h1>
-        <p>{store?.description}</p>
-        <p><strong>Address:</strong> {store?.address}</p>
-      </div>
-
-      <hr />
-
-      <div>
-        <h2>Store Products</h2>
-        {isOwner && (
-          <button onClick={() => navigate(`/products/new?storeId=${store._id}`)}>
-            + Add New Product to this Store
-          </button>
-        )}
-      </div>
-
-      {products.length === 0 ? (
-        <p>No products in this store yet.</p>
+    <>
+      <Link to="/stores/list">← All stores</Link>
+      
+      <Feedback message={message} error={store.error} />
+      
+      {edit && owned ? (
+        <StoreForm 
+          store={store.data} 
+          onCancel={() => { 
+            setEdit(false); 
+            navigate(`/stores/${storeId}`); 
+          }} 
+          onSaved={() => { 
+            setEdit(false); 
+            store.refresh(); 
+            setMessage('Store updated successfully.'); 
+            navigate(`/stores/${storeId}`); 
+          }} 
+        />
       ) : (
-        <div>
-          {products.map((prod) => (
-            <div key={prod._id}>
-              {prod.image && <img src={prod.image} alt={prod.name} width="100" />}
-              <h3>
-
-                <Link to={`/products/${prod._id}`}>{prod.name}</Link>
-              </h3>
-              <p>Price: ${prod.price}</p>
-              <p>Stock: {prod.stock}</p>
-              <hr />
-            </div>
+        <header className="panel store-header">
+          <Image src={store.data.image} alt={store.data.name} />
+          <div>
+            <span className="eyebrow">Independent maker</span>
+            <h1>{store.data.name}</h1>
+            <p>{store.data.description}</p>
+            <p>{store.data.address}</p>
+            
+            {owned && (
+              <div className="actions">
+                <button className="secondary" onClick={() => setEdit(true)}>
+                  Edit store
+                </button>
+                <Link className="button" to={`/products/new?storeId=${storeId}`}>
+                  Add product
+                </Link>
+              </div>
+            )}
+          </div>
+        </header>
+      )}
+      
+      <section>
+        <h2>Store products</h2>
+        <Feedback loading={products.loading} error={products.error} />
+        
+        <div className="card-grid">
+          {products.data?.map((p) => (
+            <ProductCard key={p._id} product={p} />
           ))}
         </div>
-      )}
-    </div>
+        
+        {products.data?.length === 0 && (
+          <div className="empty">This store has no products yet.</div>
+        )}
+      </section>
+    </>
   );
-};
-
-export default StoreDetails;
+}

@@ -1,35 +1,76 @@
-import { createContext, useState } from 'react';
+import { createContext, useState, useEffect } from 'react';
+import { currentUser } from '../services/userService';
 
 const UserContext = createContext();
 
-function getUserFromToken(){
-    // pull the raw token from local storage
-    const token = localStorage.getItem('token');
-
-    // if there is no token, then the user is not signed in
-    if(!token) return null
-
-    // then extract the payload (second part of the token)
-    const payload = token.split('.')[1]
-
-    // Convert the serialized payload into JSON
-    const tokenJSON = atob(payload)
-
-    // Take that json and convert it back into JS
-    return JSON.parse(tokenJSON)
-}
-
 function UserProvider({ children }) {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [sessionError, setSessionError] = useState('');
 
- const [user, setUser] = useState(getUserFromToken())
+  useEffect(() => {
+    let active = true;
 
- const value = { user, setUser }
+    function expired() {
+      localStorage.removeItem('token');
+      setUser(null);
+      setSessionError('Your session has expired. Please sign in again.');
+    }
+
+    window.addEventListener('session-expired', expired);
+
+    async function restore() {
+      const token = localStorage.getItem('token');
+      
+      try {
+        if (token) {
+          const current = await currentUser();
+          
+          if (active && localStorage.getItem('token') === token) {
+            setUser(current);
+          }
+        }
+      } catch (error) {
+        if (active) {
+          setSessionError(error.message);
+        }
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    }
+
+    function syncSession(event) {
+      if (event.key !== 'token') {
+        return;
+      }
+      
+      setUser(null);
+      setSessionError('');
+      setLoading(true);
+      
+      restore();
+    }
+
+    window.addEventListener('storage', syncSession);
+    
+    restore();
+
+    return () => {
+      active = false;
+      window.removeEventListener('session-expired', expired);
+      window.removeEventListener('storage', syncSession);
+    };
+  }, []);
 
   return (
-    <UserContext.Provider value={value}>
+    <UserContext.Provider 
+      value={{ user, setUser, loading, sessionError, setSessionError }}
+    >
       {children}
     </UserContext.Provider>
   );
-};
+}
 
 export { UserProvider, UserContext };
