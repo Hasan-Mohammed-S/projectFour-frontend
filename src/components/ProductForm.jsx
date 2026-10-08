@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { api, toFormData } from '../../../../../../../Downloads/FrontEnd/FrontEnd/src/services/api';
+import { api, toFormData } from '../services/api';
 import Feedback from './Feedback';
 import Image from './Image';
 

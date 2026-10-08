@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import Image from './Image';
-import { money } from '../../../../../../../Downloads/FrontEnd/FrontEnd/src/services/api';
+import { money } from '../services/api';
 
 export function ProductCard({ product }) {
   return (
